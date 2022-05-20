@@ -1,2 +1,2 @@
 # UniversalUpdater
-"Universal" (OS) updater client for Discord. Supports official Updater "v2" (Win) and our Mu (Linux, Mac).
+"Universal" (OS) updater client for Discord. Supports official Updater "v2" (Win) and our [Mu](https://github.com/OpenAsar/Mu) (Linux, Mac). Temporary-ish repo until potential integration into OpenAsar (longer-term).
