@@ -85,7 +85,7 @@ const downloadPackage = async (url, path) => {
 
 
 let _manifest;
-const getManifest = () => _manifest = _manifest ?? new Promise((resolve) => get('https://discord.com/api/updates/distributions/app/manifests/latest?channel=canary&platform=win&arch=x86', (res) => {
+const getManifest = () => _manifest = _manifest ?? new Promise((resolve) => get(`https://discord.com/api/updates/distributions/app/manifests/latest?channel=${getBuildInfo().releaseChannel}&platform=win&arch=x86`, (res) => {
   let data = '';
 
   res.on('data', chunk => data += chunk);
@@ -95,10 +95,23 @@ const getManifest = () => _manifest = _manifest ?? new Promise((resolve) => get(
   });
 }));
 
-const updateHost = async (manifest, paths, current, latest) => {
-  console.log(`Host update available! ${current.join('.')} -> ${latest.join('.')}\n`);
-  await downloadPackage(manifest.full.url, join(paths.install, 'app-' + latest.join('.')));
-};
+let _buildInfo;
+const getBuildInfo = () => _buildInfo = _buildInfo ?? JSON.parse(fs.readFileSync(join(getPaths().app, 'resources', 'build_info.json')));
+
+let _paths;
+const getPaths = () => {
+  if (_paths) return _paths;
+
+  const installMatch = __dirname.match(/app\-[0-9]+\.[0-9]+\.[0-9]+/);
+
+  const install = __dirname.slice(0, installMatch.index - 1);
+  const app = __dirname.slice(0, installMatch.index + installMatch[0].length);
+
+  return _paths = {
+    install: install,
+    app: app
+  };
+}
 
 const checkHost = async () => {
   const manifest = await getManifest();
@@ -106,18 +119,19 @@ const checkHost = async () => {
 
   console.log('Checking host...');
 
-  const installMatch = __dirname.match(/app\-[0-9]+\.[0-9]+\.[0-9]+/);
-  const current = installMatch[0].split('-')[1].split('.').map(x => parseInt(x));
+  const paths = getPaths();
+  const buildInfo = getBuildInfo();
 
-  const installPath = __dirname.slice(0, installMatch.index - 1);
-  const currentAppPath = __dirname.slice(0, installMatch.index + installMatch[0].length);
-
+  const current = buildInfo.version.split('.');
   const latest = manifest.full.host_version;
 
-  console.log('Install path:', installPath);
+  console.log('Install path:', paths.install);
 
   console.log(`Host: ${current.join('.')} (latest ${latest.join('.')})`);
-  if (current.join('.') !== latest.join('.')) await updateHost(manifest, { install: installPath, current: currentAppPath }, current, latest);
+  if (current.join('.') !== latest.join('.')) {
+    console.log(`Host update available! ${current.join('.')} -> ${latest.join('.')}\n`);
+    await downloadPackage(manifest.full.url, join(paths.install, 'app-' + latest.join('.')));
+  }
 };
 
 const checkModules = async () => {
@@ -125,10 +139,8 @@ const checkModules = async () => {
 
   console.log('\nChecking modules...');
 
-  const installMatch = __dirname.match(/app\-[0-9]+\.[0-9]+\.[0-9]+/);
-  const currentAppPath = __dirname.slice(0, installMatch.index + installMatch[0].length);
-
-  const modulesPath = join(currentAppPath, 'modules');
+  const paths = getPaths();
+  const modulesPath = join(paths.app, 'modules');
 
   try { fs.mkdirSync(modulesPath) } catch { }
 
